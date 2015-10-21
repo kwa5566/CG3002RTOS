@@ -39,6 +39,7 @@ SUBDIRS :=
 C_SRCS +=  \
 ../CG3002RTOS.cpp \
 ../heap_1.c \
+../I2Cdev.cpp \
 ../L3G.cpp \
 ../list.c \
 ../LSM303.cpp \
@@ -59,6 +60,7 @@ ASM_SRCS +=
 OBJS +=  \
 CG3002RTOS.o \
 heap_1.o \
+I2Cdev.o \
 L3G.o \
 list.o \
 LSM303.o \
@@ -72,6 +74,7 @@ Wire.o
 OBJS_AS_ARGS +=  \
 CG3002RTOS.o \
 heap_1.o \
+I2Cdev.o \
 L3G.o \
 list.o \
 LSM303.o \
@@ -85,6 +88,7 @@ Wire.o
 C_DEPS +=  \
 CG3002RTOS.d \
 heap_1.d \
+I2Cdev.d \
 L3G.d \
 list.d \
 LSM303.d \
@@ -98,6 +102,7 @@ Wire.d
 C_DEPS_AS_ARGS +=  \
 CG3002RTOS.d \
 heap_1.d \
+I2Cdev.d \
 L3G.d \
 list.d \
 LSM303.d \
@@ -123,6 +128,8 @@ LINKER_SCRIPT_DEP+=
 
 
 # AVR32/GNU C Compiler
+
+
 
 
 

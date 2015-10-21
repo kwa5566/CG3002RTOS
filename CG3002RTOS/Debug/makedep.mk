@@ -6,6 +6,8 @@ CG3002RTOS.cpp
 
 heap_1.c
 
+I2Cdev.cpp
+
 L3G.cpp
 
 list.c

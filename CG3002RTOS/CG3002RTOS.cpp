@@ -10,9 +10,13 @@
 #include	<task.h>
 #include	<Arduino.h>
 #include	"NewPing.h"
-#include	"Wire.h"
+//#include	"Wire.h"
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+#include "Wire.h"
+#endif
 #include	"L3G.h"
 #include	"LSM303.h"
+
 
 int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 
@@ -91,7 +95,7 @@ int flagL, flagR=0;
 #define PRINT_EULER 1   //Will print the Euler angles Roll, Pitch and Yaw
 #define PRINT_STEPS_DIST 0
 
-#define STATUS_LED 13
+//#define STATUS_LED 13
 
 float G_Dt=0.02;    // Integration time (DCM algorithm)  We will run the integration loop at 50Hz if possible
 
@@ -226,7 +230,12 @@ LSM303 compass;
 
 void I2C_Init()
 {
+	//Wire.begin();
+	#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
 	Wire.begin();
+	#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+	Fastwire::setup(400, true);
+	#endif
 }
 
 void Gyro_Init()
@@ -693,10 +702,7 @@ void task2(void	*p)
 {
 	while(1)
 	{
-		vTaskDelay(100);
-		readIRSensor(); 
-		dprintf("Hi: %d %d %d %d",ToDeg(roll) ,ToDeg(pitch), ToDeg(yaw),compass.heading());
-		if((millis()-timer)>=50)  // Main loop runs at 50Hz
+		if((millis()-timer)>=10)  // Main loop runs at 50Hz
 		{
 			counter++;
 			timer_old = timer;
@@ -708,14 +714,14 @@ void task2(void	*p)
 			
 			// *** DCM algorithm
 			// Data adquisition
-			//Read_Gyro();   // This read gyro data
-			//Read_Accel();     // Read I2C accelerometer
+			Read_Gyro();   // This read gyro data
+			Read_Accel();     // Read I2C accelerometer
 			
 			if (counter > 5)  // Read compass data at 10Hz... (5 loop runs)
 			{
 				counter=0;
-				//Read_Compass();    // Read I2C magnetometer
-				//Compass_Heading(); // Calculate magnetic heading
+				Read_Compass();    // Read I2C magnetometer
+				Compass_Heading(); // Calculate magnetic heading
 			}
 			
 			// Calculations...
@@ -725,7 +731,7 @@ void task2(void	*p)
 			Euler_angles();
 			// ***
 			
-			//printdata();
+			printdata();
 		}
 	
 	}
@@ -739,10 +745,10 @@ void	vApplicationIdleHook()
 void setup()
 {
 	Serial.begin(115200);	
-	pinMode (STATUS_LED,OUTPUT);  // Status LED
+	//pinMode (STATUS_LED,OUTPUT);  // Status LED
 	
 	I2C_Init();
-	dprintf("be");
+	//dprintf("be");
 	//Serial.println("Pololu MinIMU-9 + Arduino AHRS");
 
 	//digitalWrite(STATUS_LED,LOW);
@@ -761,7 +767,7 @@ void setup()
 		Read_Accel();
 		for(int y=0; y<6; y++)   // Cumulate values
 		AN_OFFSET[y] += AN[y];
-	//	vTaskDelay(20);
+	    //vTaskDelay(20);
 		delay(20);
 	}
 	
@@ -770,13 +776,13 @@ void setup()
 	
 	AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
 	
-	//Serial.println("Offset:");
-	//for(int y=0; y<6; y++)
-	//Serial.println(AN_OFFSET[y]);
+	Serial.println("Offset:");
+	for(int y=0; y<6; y++)
+	Serial.println(AN_OFFSET[y]);
 	
 	//vTaskDelay(2000);
-	delay(2000);
-	digitalWrite(STATUS_LED,HIGH);
+	//delay(2000);
+	//digitalWrite(STATUS_LED,HIGH);
 	
 	timer=millis();
 	delay(20);
