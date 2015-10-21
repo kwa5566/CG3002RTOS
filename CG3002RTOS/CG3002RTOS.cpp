@@ -40,7 +40,7 @@ unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
 
 bool isConnected = false;
 bool isDataRequested = false;
-int data[DATA_SIZE] = {0};
+unsigned int data[DATA_SIZE] = {0};
 
 NewPing sonar[SONAR_NUM] = {     // Sensor object array.
 	NewPing(22, 23, MAX_DISTANCE), //UR 0  Right Side
@@ -346,7 +346,7 @@ void calculate()
   rotating = abs(curHeading-prvHeading)>9;
   prvHeading = curHeading;
   if(rotating){
-	  Serial.println("rotaing yo!");
+	  //Serial.println("rotaing yo!");
 	  return;
   }
   
@@ -421,7 +421,10 @@ void calculate()
   ////Serial.println(step);
   //Serial.println(compass.heading());
   //#endif
-  dprintf("steps: %d",step);
+  
+  //dprintf("steps: %d",step);
+  data[5]=step;
+  data[6]=curHeading;
   
 }
 
@@ -684,6 +687,7 @@ void readSonar(uint8_t sensor){
 	vTaskDelay(PING_INTERVAL);	
 	uS = sonar[sensor].ping(); 	
 	cm[sensor] = uS/US_ROUNDTRIP_CM; 
+	data[sensor]=cm[sensor];
 	
 		//dprintf("%d\n",cm[sensor]);	
 }
