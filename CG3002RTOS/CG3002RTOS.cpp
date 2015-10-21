@@ -32,10 +32,16 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 //SONAR 
 #define TRIGGER_PIN  12  // Arduino pin tied to trigger pin on the ultrasonic sensor.
 #define ECHO_PIN     11  // Arduino pin tied to echo pin on the ultrasonic sensor.
-#define MAX_DISTANCE 300 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+#define MAX_DISTANCE 250 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 #define SONAR_NUM     5 // Number or sensors.
 #define PING_INTERVAL 30
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
+#define DATA_SIZE 8
+
+bool isConnected = false;
+bool isDataRequested = false;
+int data[DATA_SIZE] = {0};
+
 NewPing sonar[SONAR_NUM] = {     // Sensor object array.
 	NewPing(22, 23, MAX_DISTANCE), //UR 0  Right Side
 	NewPing(24, 25, MAX_DISTANCE),	//UR1  Right Front
@@ -59,8 +65,8 @@ int flagL, flagR=0;
 // 3.9 mg/digit; 1 g = 256
 #define GRAVITY 256  //this equivalent to 1G in the raw data coming from the accelerometer
 
-#define ToRad(x) ((x)*0.01745329252)  // *pi/180
-#define ToDeg(x) ((x)*57.2957795131)  // *180/pi
+#define ToRad(x) ((x)*0.01745329252f)  // *pi/180
+#define ToDeg(x) ((x)*57.2957795131f)  // *180/pi
 
 // L3G4200D gyro: 2000 dps full scale
 // 70 mdps/digit; 1 dps = 0.07
@@ -322,72 +328,101 @@ void dprintf(const char *fmt,...)
 
 
 //========================OUTPUT===========================// 
-#define ANGLE_THRESHOLD 10
-#define HEIGHT 0.7
-float curDeg=0,prvDeg=0,alpha=0,beta=0,distance=0,step=0;
+#define THRESHOLD 7
+#define HEIGHT 0.9
+#define M_PI 3.14159265359
+#define PRINT_SWING 0
+#define PRINT_DEG 0
+#define PRINT_DIST 0
+#define PRINT_STEPS 1
+
+int curDeg=0,prvDeg=0,step=0;
+float alpha=0,beta=0,distance=0,prvHeading=0;
+bool aDone=false,bDone=false,rotating=false;
 
 void calculate()
 {
-    curDeg=ToDeg(roll);
-    
-     if( ((int) curDeg)==0 || ( abs((int) curDeg) <=3 ))
-    {
-      if(alpha>0)
-      {
-          if(alpha> ANGLE_THRESHOLD)
-        {
-          distance+= HEIGHT*(tan(ToRad(alpha)));
-        }
-        Serial.print("alpha ");
-        Serial.println(alpha);
-        alpha=0;
-      }
-      if(beta>0)
-      {
-        if(beta> ANGLE_THRESHOLD-5)
-        {
-          distance+= HEIGHT*(tan(ToRad(beta)));
-          
-        }
-        Serial.print("beta ");
-        Serial.println(beta);
-        beta=0;
-      }
-      
-    }
-    
-    
-    
-    else if(curDeg>0) // leg swinging front
-    {
-
-      
-      if(curDeg>prvDeg)  // still moving havent' got alpha
-      {
-       // Serial.print("moving front ");
-        alpha = curDeg;       
-        //Serial.print("alpha ");
-        //Serial.println(alpha); 
-      }
-      
-    } else {      // leg swinging back
-     
-      if(abs(curDeg)>abs(prvDeg))
-      {
-       // Serial.print("moving back ");
-        beta = abs(curDeg);
-        //Serial.print("beta ");
-        //Serial.println(beta);
-      }
-      
-    }
-    
-   
-
-    prvDeg = curDeg;
-    //Serial.print("distance: ");
-    //Serial.println(distance);
-    
+  float curHeading = compass.heading();
+  rotating = abs(curHeading-prvHeading)>9;
+  prvHeading = curHeading;
+  if(rotating){
+	  Serial.println("rotaing yo!");
+	  return;
+  }
+  
+  
+  curDeg= ToDeg(pitch);
+  
+  if(curDeg>0) // if moving forward
+  {
+	  if(curDeg>prvDeg && curDeg>alpha) // if increasing
+	  {
+		  alpha = curDeg;
+		  
+		  //#if PRINT_DEG == 1
+		  //Serial.print("Alpha: ");
+		  //Serial.println(alpha);
+		  //#endif
+		  } else if (curDeg < prvDeg && alpha> THRESHOLD && alpha<=25 && aDone==false){
+		  alpha = alpha*2*M_PI/180.0;
+		  distance += HEIGHT*tan(alpha);
+		  step+=1;
+		  aDone=true;
+		  //#if PRINT_SWING == 1
+		  //Serial.print("Front Swing: ");
+		  //Serial.println(HEIGHT*tan(alpha));
+		  //#endif
+		
+	  }
+	  
+	  
+  }
+  
+  if(curDeg<0) // if moving backward
+  {
+	  if(abs(curDeg) > abs(prvDeg) ) // if increasing
+	  {
+		  beta = abs(curDeg);
+		  //#if PRINT_DEG == 1
+		  //Serial.print("Beta: ");
+		  //Serial.println(beta);
+		  //#endif
+		  
+		  } else if (abs(curDeg) < abs(prvDeg) && beta> 3 && beta<=10 && bDone==false){
+		  beta = beta*3.0*M_PI/180.0;
+		  distance += HEIGHT*tan(alpha);
+		  step+=1;
+		  bDone=true;
+		  
+		  //#if PRINT_SWING == 1
+		  //Serial.print("Back Swing: ");
+		  //Serial.println(HEIGHT*tan(beta));
+		  //#endif
+		  		  
+	  }
+	  
+  }
+  if(abs(curDeg)== 0)
+  {
+	  alpha=0;
+	  beta=0;
+	  aDone=false;
+	  bDone=false;
+  }
+  
+  //prvDeg=curDeg;
+  //#if PRINT_DIST == 1
+  //Serial.print("Distance: ");
+  //Serial.println(distance);
+  //#endif
+  
+  //#if PRINT_STEPS == 1
+  ////Serial.print("Steps: ");
+  ////Serial.println(step);
+  //Serial.println(compass.heading());
+  //#endif
+  dprintf("steps: %d",step);
+  
 }
 
 void printdata(void)
@@ -395,8 +430,11 @@ void printdata(void)
       //Serial.print("!");
 
       if (PRINT_EULER == 1){
-		  dprintf("p");
-		  dprintf("ANG: %d, %d,%d,%d\n",ToDeg(roll) ,ToDeg(pitch), ToDeg(yaw),compass.heading()); 
+		dprintf("p");
+		dprintf( "%d ",(int)ToDeg(pitch));
+		//	dprintf("%f, ",ToDeg(pitch));
+		//	dprintf("%f, ",ToDeg(yaw));
+		//	dprintf("%f \n ",compass.heading());		
       //Serial.print("ANG:");
       //Serial.print(ToDeg(roll));
       //Serial.print(",");
@@ -693,7 +731,7 @@ void	task1(void	*p)
 			onVMotor(1);
 		else if (ir_distance>=100 && ir_distance<=150)
 			onVMotor(2);	
-		vTaskDelay(70);	
+		vTaskDelay(1000);	
 		
 	}
 }
@@ -701,9 +739,10 @@ void	task1(void	*p)
 void task2(void	*p)
 {
 	while(1)
-	{
-		if((millis()-timer)>=10)  // Main loop runs at 50Hz
-		{
+	{	
+		vTaskDelay(2000);
+		//if((millis()-timer)>=10)  // Main loop runs at 50Hz
+		//{
 			counter++;
 			timer_old = timer;
 			timer=millis();
@@ -732,19 +771,69 @@ void task2(void	*p)
 			// ***
 			
 			printdata();
-		}
+		//}
 	
 	}
 }
+
+void task3(void	*p)
+{
+	if(Serial1.available()>0){
+		int readyToSend = Serial1.read();
+		if(readyToSend==2){
+			//Serial1.write(0xef);
+			for(int i=0;i<DATA_SIZE;i++){
+				
+				//Serial1.write(data[i]);
+				Serial1.write(i);
+				
+				//Serial1.println(i);
+				//dprintf("sent %d\n",i);
+			}
+			Serial1.write(0xff);
+			Serial1.flush();
+			}else if(readyToSend==3){
+			analogWrite(5,255);
+			}else if(readyToSend==4){
+			analogWrite(5,0);
+		}
+		
+	}
+
+	vTaskDelay(100);
+	
+}
+
 #define	STACK_DEPTH	128
 void	vApplicationIdleHook()
 {
 	//	Do	nothing.
 }
 
+bool handShake(){
+	while(Serial1.available()<=0);
+	
+	int incomingByte = Serial1.read();
+	incomingByte += 1;
+	if (incomingByte == 2)
+	{
+		//Serial.write(1);
+		Serial1.print(incomingByte);
+		return true;
+	}
+	else
+	return false;
+}
+
+
 void setup()
 {
 	Serial.begin(115200);	
+	Serial1.begin(115200);
+	
+	while(isConnected==false)
+	isConnected = handShake();
+	
 	//pinMode (STATUS_LED,OUTPUT);  // Status LED
 	
 	I2C_Init();
@@ -788,6 +877,7 @@ void setup()
 	delay(20);
 	//vTaskDelay(20);
 	counter=0;
+	prvHeading=compass.heading();
 	dprintf("en");
 }
 
@@ -796,10 +886,11 @@ int	main(void)
 {
 	init();
 	setup();
-	TaskHandle_t	t1,	t2;
+	TaskHandle_t	t1,	t2,t3;
 	//	Create	tasks
-	//xTaskCreate(task1,	"Task	1",	STACK_DEPTH,	NULL,	6,	&t1);
+	xTaskCreate(task1,	"Task	1",	STACK_DEPTH,	NULL,	6,	&t1);
 	xTaskCreate(task2,	"Task	2",	STACK_DEPTH,	NULL,	5,	&t2);
+	xTaskCreate(task3,  "Task	3",	STACK_DEPTH,	NULL,	4,	&t3);
 	vTaskStartScheduler();
 	
 }
