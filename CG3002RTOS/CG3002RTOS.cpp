@@ -442,6 +442,7 @@ void calculate()
 	  data[6] = 0;
   }
   int headingVal=(int) ToDeg(MAG_Heading);
+  //dprintf("%d",headingVal);
   if(headingVal>=255)
   {
 	  temp = headingVal/255;
@@ -451,7 +452,7 @@ void calculate()
 	  data[7] = headingVal;
 	  data[8] = 0;
   }
-  //dprintf("%d",data[5]);
+  
   //Serial.println(data[5]);
   //dprintf("%d",data[6]);
  // dprintf("a");
@@ -778,7 +779,7 @@ void	task1(void	*p)
 			//onVMotor(1);
 		//else if (ir_distance>=100 && ir_distance<=150)
 			//onVMotor(2);	
-		vTaskDelay(100);	
+		//vTaskDelay(100);	
 		
 	}
 }
@@ -788,8 +789,9 @@ void task2(void	*p)
 	while(1)
 	{	
 		
-		//if((millis()-timer)>=10)  // Main loop runs at 50Hz
+		//if((millis()-timer)>=30)  // Main loop runs at 50Hz
 		//{
+			unsigned long start = millis();
 			counter++;
 			timer_old = timer;
 			timer=millis();
@@ -816,11 +818,16 @@ void task2(void	*p)
 			Drift_correction();
 			Euler_angles();
 			// ***
-			
+			//dprintf("p");
 			calculate();
-			vTaskDelay(30);
+			unsigned long duration = millis() - start;
+			//dprintf("%d\n",ToDeg(pitch));
+			//dprintf("%d\n",step);
+			//dprintf("%d\n",ToDeg(MAG_Heading));
+			//Serial.println(millis());
+			vTaskDelay(10);
 			//printdata();
-		//}
+			//}
 	
 	}
 }
@@ -844,7 +851,7 @@ void task3(void	*p)
 		
 	}
 
-	vTaskDelay(100);
+	vTaskDelay(10);
 	
 }
 
@@ -862,7 +869,7 @@ bool handShake(){
 	if (incomingByte == 2)
 	{
 		//Serial.write(1);
-		Serial1.print(incomingByte);
+		//Serial1.print(incomingByte);
 		return true;
 	}
 	else
@@ -872,12 +879,12 @@ bool handShake(){
 
 void setup()
 {
-	Serial.begin(115200);	
+	Serial.begin(9600);	
 	 pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
 	 for (uint8_t i = 1; i < SONAR_NUM; i++) // Set the starting time for each sensor.
 	 pingTimer[i] = pingTimer[i - 1] + PING_INTERVAL;
 	 
-	//Serial1.begin(115200);
+	Serial1.begin(115200);
 	//
  	//while(isConnected==false)
  	//isConnected = handShake();
@@ -936,9 +943,9 @@ int	main(void)
 	setup();
 	TaskHandle_t	t1,	t2,t3;
 	//	Create	tasks
-	//xTaskCreate(task1,	"Task	1",	STACK_DEPTH,	NULL,	6,	&t1);
-	xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	5,	&t2);
-	//xTaskCreate(task3,  "Task	3",	STACK_DEPTH,	NULL,	4,	&t3);
+	xTaskCreate(task1,	"Task 1",	STACK_DEPTH,	NULL,	5,	&t1);
+	xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	6,	&t2);
+	//xTaskCreate(task3,  "Task 3",	STACK_DEPTH,	NULL,	7,	&t3);
 	vTaskStartScheduler();
 	
 }
