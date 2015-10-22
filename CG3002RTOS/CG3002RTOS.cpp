@@ -80,12 +80,13 @@ int flagL, flagR=0;
 
 // LSM303 magnetometer calibration constants; use the Calibrate example from
 // the Pololu LSM303 library to find the right values for your board
-#define M_X_MIN -2304
-#define M_Y_MIN -2194
-#define M_Z_MIN -2156
-#define M_X_MAX 2771
-#define M_Y_MAX 2860
-#define M_Z_MAX 2753
+
+#define M_X_MIN -1832
+#define M_Y_MIN -2672
+#define M_Z_MIN -2760
+#define M_X_MAX 2196
+#define M_Y_MAX 1313
+#define M_Z_MAX 1141
 
 #define Kp_ROLLPITCH 0.02
 #define Ki_ROLLPITCH 0.00002
@@ -280,9 +281,6 @@ void Accel_Init()
 		default: // DLM, DLH
 		compass.writeReg(LSM303::CTRL_REG4_A, 0x30); // 8 g full scale: FS = 11
 	}
-	//compass.heading((LSM303::vector<int>){0, 0, -1});
-	//compass.m_min = (LSM303::vector<int16_t>){-2304, -2194, -2156};
-	//compass.m_max = (LSM303::vector<int16_t>){+2771, +2860, +2753};
 }
 
 // Reads x,y and z accelerometer registers
@@ -331,7 +329,7 @@ void dprintf(const char *fmt,...)
 //========================OUTPUT===========================// 
 #define THRESHOLD 7
 #define HEIGHT 0.9
-#define M_PI 3.14159265359
+#define PIE 3.14159265359
 #define PRINT_SWING 0
 #define PRINT_DEG 0
 #define PRINT_DIST 0
@@ -343,58 +341,62 @@ bool aDone=false,bDone=false,rotating=false;
 
 void calculate()
 {
-  float curHeading = compass.heading();
-  rotating = abs(curHeading-prvHeading)>9;
-  prvHeading = curHeading;
-  if(rotating){
-	  //Serial.println("rotaing yo!");
-	  return;
-  }
-  
+  //float curHeading = ToDeg(MAG_Heading);
+  //rotating = abs(curHeading-prvHeading)>9;
+  //prvHeading = curHeading;
+  //if(rotating){
+	  ////Serial.println("rotaing yo!");
+	  //return;
+  //}
+  //
   
   curDeg= ToDeg(pitch);
+  dprintf("%d",curDeg);
   
   if(curDeg>0) // if moving forward
   {
 	  if(curDeg>prvDeg && curDeg>alpha) // if increasing
 	  {
 		  alpha = curDeg;
-		  
+		  //dprintf("al");
 		  //#if PRINT_DEG == 1
 		  //Serial.print("Alpha: ");
 		  //Serial.println(alpha);
 		  //#endif
 		  } else if (curDeg < prvDeg && alpha> THRESHOLD && alpha<=25 && aDone==false){
-		  alpha = alpha*2*M_PI/180.0;
+		  alpha = alpha*2*PIE/180.0;
 		  distance += HEIGHT*tan(alpha);
 		  step+=1;
 		  aDone=true;
+		  //dprintf("%d",step);
 		  //#if PRINT_SWING == 1
 		  //Serial.print("Front Swing: ");
 		  //Serial.println(HEIGHT*tan(alpha));
 		  //#endif
+		 // dprintf("[]");
 		
 	  }
 	  
 	  
   }
-  
+ // dprintf("a");
   if(curDeg<0) // if moving backward
   {
 	  if(abs(curDeg) > abs(prvDeg) ) // if increasing
 	  {
 		  beta = abs(curDeg);
+		 // dprintf("bet");
 		  //#if PRINT_DEG == 1
 		  //Serial.print("Beta: ");
 		  //Serial.println(beta);
 		  //#endif
 		  
 		  } else if (abs(curDeg) < abs(prvDeg) && beta> 3 && beta<=10 && bDone==false){
-		  beta = beta*3.0*M_PI/180.0;
+		  beta = beta*3.0*PIE/180.0;
 		  distance += HEIGHT*tan(alpha);
 		  step+=1;
 		  bDone=true;
-		  
+		  //dprintf("+");
 		  //#if PRINT_SWING == 1
 		  //Serial.print("Back Swing: ");
 		  //Serial.println(HEIGHT*tan(beta));
@@ -409,9 +411,10 @@ void calculate()
 	  beta=0;
 	  aDone=false;
 	  bDone=false;
+	  //dprintf("rst");
   }
   
-  //prvDeg=curDeg;
+  prvDeg=curDeg;
   //#if PRINT_DIST == 1
   //Serial.print("Distance: ");
   //Serial.println(distance);
@@ -423,10 +426,17 @@ void calculate()
   //Serial.println(compass.heading());
   //#endif
   
-  //dprintf("steps: %d",step);
+//  dprintf("steps: %d",step);
+//Serial.print("steps :");
+//Serial.println(step);
+	dprintf("%d",step);
   data[5]=step;
-  data[6]=curHeading;
-  
+  data[6]=(int) ToDeg(MAG_Heading);
+  //dprintf("%d",data[5]);
+  //Serial.println(data[5]);
+  //dprintf("%d",data[6]);
+ // dprintf("a");
+// Serial.println(data[6]);
 }
 
 void printdata(void)
@@ -663,13 +673,20 @@ void Compass_Heading()
 	c_magnetom_y = (float)(magnetom_y - SENSOR_SIGN[7]*M_Y_MIN) / (M_Y_MAX - M_Y_MIN) - SENSOR_SIGN[7]*0.5;
 	c_magnetom_z = (float)(magnetom_z - SENSOR_SIGN[8]*M_Z_MIN) / (M_Z_MAX - M_Z_MIN) - SENSOR_SIGN[8]*0.5;
 	
-	// Tilt compensated Magnetic filed X:
-	MAG_X = c_magnetom_x*cos_pitch+c_magnetom_y*sin_roll*sin_pitch+c_magnetom_z*cos_roll*sin_pitch;
-	// Tilt compensated Magnetic filed Y:
-	MAG_Y = c_magnetom_y*cos_roll-c_magnetom_z*sin_roll;
-	// Magnetic Heading
-	MAG_Heading = atan2(-MAG_Y,MAG_X);
-	//MAG_Heading = compass.heading(
+	//// Tilt compensated Magnetic filed X:
+	//MAG_X = c_magnetom_x*cos_pitch+c_magnetom_y*sin_roll*sin_pitch+c_magnetom_z*cos_roll*sin_pitch;
+	//// Tilt compensated Magnetic filed Y:
+	//MAG_Y = c_magnetom_y*cos_roll-c_magnetom_z*sin_roll;
+	//// Magnetic Heading
+	//MAG_Heading = atan2(-MAG_Y,MAG_X);
+	////MAG_Heading = compass.heading(
+	
+	  MAG_Heading = atan2(c_magnetom_x,c_magnetom_z);
+	  if(MAG_Heading < 0)
+	  MAG_Heading += 2*M_PI;
+
+	  if(MAG_Heading > 2*M_PI)
+	  MAG_Heading -= 2*M_PI;
 }
 
 //=======================================================================================================================================//
@@ -751,7 +768,7 @@ void task2(void	*p)
 {
 	while(1)
 	{	
-		vTaskDelay(2000);
+		
 		//if((millis()-timer)>=10)  // Main loop runs at 50Hz
 		//{
 			counter++;
@@ -781,7 +798,9 @@ void task2(void	*p)
 			Euler_angles();
 			// ***
 			
-			printdata();
+			calculate();
+			vTaskDelay(30);
+			//printdata();
 		//}
 	
 	}
@@ -851,49 +870,49 @@ void setup()
 	//
 	////pinMode (STATUS_LED,OUTPUT);  // Status LED
 	//
-	//I2C_Init();
-	////dprintf("be");
-	////Serial.println("Pololu MinIMU-9 + Arduino AHRS");
-//
-	////digitalWrite(STATUS_LED,LOW);
-	////vTaskDelay(1500);
-	//
-	//Accel_Init();
-	//Compass_Init();
-	//Gyro_Init();
-	//
-	////vTaskDelay(20);
-	//delay(20);
-	//
-	//for(int i=0;i<32;i++)    // We take some readings...
-	//{
-		//Read_Gyro();
-		//Read_Accel();
-		//for(int y=0; y<6; y++)   // Cumulate values
-		//AN_OFFSET[y] += AN[y];
-	    ////vTaskDelay(20);
-		//delay(20);
-	//}
-	//
-	//for(int y=0; y<6; y++)
-	//AN_OFFSET[y] = AN_OFFSET[y]/32;
-	//
-	//AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
-	//
-	//Serial.println("Offset:");
-	//for(int y=0; y<6; y++)
-	//Serial.println(AN_OFFSET[y]);
-	//
-	////vTaskDelay(2000);
-	////delay(2000);
-	////digitalWrite(STATUS_LED,HIGH);
-	//
-	//timer=millis();
-	//delay(20);
-	////vTaskDelay(20);
-	//counter=0;
+	I2C_Init();
+	//dprintf("be");
+	//Serial.println("Pololu MinIMU-9 + Arduino AHRS");
+
+	//digitalWrite(STATUS_LED,LOW);
+	//vTaskDelay(1500);
+	
+	Accel_Init();
+	Compass_Init();
+	Gyro_Init();
+	
+	//vTaskDelay(20);
+	delay(20);
+	
+	for(int i=0;i<32;i++)    // We take some readings...
+	{
+		Read_Gyro();
+		Read_Accel();
+		for(int y=0; y<6; y++)   // Cumulate values
+		AN_OFFSET[y] += AN[y];
+	    //vTaskDelay(20);
+		delay(20);
+	}
+	
+	for(int y=0; y<6; y++)
+	AN_OFFSET[y] = AN_OFFSET[y]/32;
+	
+	AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
+	
+	Serial.println("Offset:");
+	for(int y=0; y<6; y++)
+	Serial.println(AN_OFFSET[y]);
+	
+	//vTaskDelay(2000);
+	delay(2000);
+	//digitalWrite(STATUS_LED,HIGH);
+	
+	timer=millis();
+	delay(20);
+	//vTaskDelay(20);
+	counter=0;
 	//prvHeading=compass.heading();
-	//dprintf("en");
+	dprintf("en");
 }
 
 
@@ -903,8 +922,8 @@ int	main(void)
 	setup();
 	TaskHandle_t	t1,	t2,t3;
 	//	Create	tasks
-	xTaskCreate(task1,	"Task	1",	STACK_DEPTH,	NULL,	6,	&t1);
-	//xTaskCreate(task2,	"Task	2",	STACK_DEPTH,	NULL,	5,	&t2);
+	//xTaskCreate(task1,	"Task	1",	STACK_DEPTH,	NULL,	6,	&t1);
+	xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	5,	&t2);
 	//xTaskCreate(task3,  "Task	3",	STACK_DEPTH,	NULL,	4,	&t3);
 	vTaskStartScheduler();
 	
