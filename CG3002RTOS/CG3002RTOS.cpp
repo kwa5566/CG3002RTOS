@@ -34,7 +34,7 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 #define SONAR_NUM     5 // Number or sensors.
 #define PING_INTERVAL 30
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
-#define DATA_SIZE 8
+#define DATA_SIZE 10
 
 unsigned long pingTimer[SONAR_NUM]; // Holds the times when the next ping should happen for each sensor.
 uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
@@ -430,8 +430,27 @@ void calculate()
 //Serial.print("steps :");
 //Serial.println(step);
 	dprintf("%d",step);
-  data[5]=step;
-  data[6]=(int) ToDeg(MAG_Heading);
+  //data[5]=step;
+  unsigned int temp;
+  if(step>=255)
+  {
+	  temp = step/255;
+	  data[5] = step - temp*255;
+	  data[6] = temp;
+  }else{
+	  data[5] = step;
+	  data[6] = 0;
+  }
+  int headingVal=(int) ToDeg(MAG_Heading);
+  if(headingVal>=255)
+  {
+	  temp = headingVal/255;
+	  data[7] = headingVal - temp*255;
+	  data[8] = temp;
+  }else{
+	  data[7] = headingVal;
+	  data[8] = 0;
+  }
   //dprintf("%d",data[5]);
   //Serial.println(data[5]);
   //dprintf("%d",data[6]);
@@ -813,13 +832,8 @@ void task3(void	*p)
 		if(readyToSend==2){
 			//Serial1.write(0xef);
 			for(int i=0;i<DATA_SIZE;i++){
-				
-				//Serial1.write(data[i]);
-				Serial1.write(i);
-				
-				//Serial1.println(i);
-				//dprintf("sent %d\n",i);
-			}
+				Serial1.write(data[i]);
+				}
 			Serial1.write(0xff);
 			Serial1.flush();
 			}else if(readyToSend==3){
