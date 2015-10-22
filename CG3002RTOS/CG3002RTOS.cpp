@@ -30,23 +30,24 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
  */ 
 
 //SONAR 
-#define TRIGGER_PIN  12  // Arduino pin tied to trigger pin on the ultrasonic sensor.
-#define ECHO_PIN     11  // Arduino pin tied to echo pin on the ultrasonic sensor.
 #define MAX_DISTANCE 250 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 #define SONAR_NUM     5 // Number or sensors.
 #define PING_INTERVAL 30
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
 #define DATA_SIZE 8
 
+unsigned long pingTimer[SONAR_NUM]; // Holds the times when the next ping should happen for each sensor.
+uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
+
 bool isConnected = false;
 bool isDataRequested = false;
 unsigned int data[DATA_SIZE] = {0};
 
 NewPing sonar[SONAR_NUM] = {     // Sensor object array.
-	NewPing(22, 23, MAX_DISTANCE), //UR 0  Right Side
+	NewPing(22, 23, 100), //UR 0  Right Side
 	NewPing(24, 25, MAX_DISTANCE),	//UR1  Right Front
 	NewPing(26, 27, MAX_DISTANCE),	//UR2 Left Front
-	NewPing(28, 29, MAX_DISTANCE),	//UR3 Left Side
+	NewPing(28, 29, 100),	//UR3 Left Side
 	NewPing(30, 31, MAX_DISTANCE)	//UR4 Center
 };
 unsigned int uS;
@@ -685,7 +686,7 @@ int freeRam () {
 void readSonar(uint8_t sensor){	
 	
 	vTaskDelay(PING_INTERVAL);	
-	uS = sonar[sensor].ping(); 	
+	uS = sonar[sensor].ping_median(3); 	
 	cm[sensor] = uS/US_ROUNDTRIP_CM; 
 	data[sensor]=cm[sensor];
 	
@@ -712,30 +713,36 @@ void onVMotor(int i){
 	}
 }
 
+
+
+
 void	task1(void	*p)
 {
 	while(1)
 	{	
 		//dprintf("%d\n",millis());	
 		
+		//readSonar(); 
+		readSonar(1);		
 		readSonar(0);
-		readSonar(1);
 		readSonar(2);		
-		readSonar(3);		
+		readSonar(3);
 		readSonar(4);		
+		
+		
 		readIRSensor(); 		
 		
 		for (uint8_t i = 0; i < SONAR_NUM; i++)  // Loop through all the sensors.						
 			dprintf("%d: %d",i,cm[i]);	
 		dprintf("IR: %d\n", ir_distance);
 		
-		if(ir_distance>=20 && ir_distance<=50)
-			onVMotor(0);
-		else if (ir_distance>=50 && ir_distance<=100)
-			onVMotor(1);
-		else if (ir_distance>=100 && ir_distance<=150)
-			onVMotor(2);	
-		vTaskDelay(1000);	
+		//if(ir_distance>=20 && ir_distance<=50)
+			//onVMotor(0);
+		//else if (ir_distance>=50 && ir_distance<=100)
+			//onVMotor(1);
+		//else if (ir_distance>=100 && ir_distance<=150)
+			//onVMotor(2);	
+		vTaskDelay(100);	
 		
 	}
 }
@@ -833,56 +840,60 @@ bool handShake(){
 void setup()
 {
 	Serial.begin(115200);	
-	Serial1.begin(115200);
-	
-	while(isConnected==false)
-	isConnected = handShake();
-	
-	//pinMode (STATUS_LED,OUTPUT);  // Status LED
-	
-	I2C_Init();
-	//dprintf("be");
-	//Serial.println("Pololu MinIMU-9 + Arduino AHRS");
-
-	//digitalWrite(STATUS_LED,LOW);
-	//vTaskDelay(1500);
-	
-	Accel_Init();
-	Compass_Init();
-	Gyro_Init();
-	
-	//vTaskDelay(20);
-	delay(20);
-	
-	for(int i=0;i<32;i++)    // We take some readings...
-	{
-		Read_Gyro();
-		Read_Accel();
-		for(int y=0; y<6; y++)   // Cumulate values
-		AN_OFFSET[y] += AN[y];
-	    //vTaskDelay(20);
-		delay(20);
-	}
-	
-	for(int y=0; y<6; y++)
-	AN_OFFSET[y] = AN_OFFSET[y]/32;
-	
-	AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
-	
-	Serial.println("Offset:");
-	for(int y=0; y<6; y++)
-	Serial.println(AN_OFFSET[y]);
-	
-	//vTaskDelay(2000);
-	//delay(2000);
-	//digitalWrite(STATUS_LED,HIGH);
-	
-	timer=millis();
-	delay(20);
-	//vTaskDelay(20);
-	counter=0;
-	prvHeading=compass.heading();
-	dprintf("en");
+	 pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
+	 for (uint8_t i = 1; i < SONAR_NUM; i++) // Set the starting time for each sensor.
+	 pingTimer[i] = pingTimer[i - 1] + PING_INTERVAL;
+	 
+	//Serial1.begin(115200);
+	//
+ 	//while(isConnected==false)
+ 	//isConnected = handShake();
+	//
+	////pinMode (STATUS_LED,OUTPUT);  // Status LED
+	//
+	//I2C_Init();
+	////dprintf("be");
+	////Serial.println("Pololu MinIMU-9 + Arduino AHRS");
+//
+	////digitalWrite(STATUS_LED,LOW);
+	////vTaskDelay(1500);
+	//
+	//Accel_Init();
+	//Compass_Init();
+	//Gyro_Init();
+	//
+	////vTaskDelay(20);
+	//delay(20);
+	//
+	//for(int i=0;i<32;i++)    // We take some readings...
+	//{
+		//Read_Gyro();
+		//Read_Accel();
+		//for(int y=0; y<6; y++)   // Cumulate values
+		//AN_OFFSET[y] += AN[y];
+	    ////vTaskDelay(20);
+		//delay(20);
+	//}
+	//
+	//for(int y=0; y<6; y++)
+	//AN_OFFSET[y] = AN_OFFSET[y]/32;
+	//
+	//AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
+	//
+	//Serial.println("Offset:");
+	//for(int y=0; y<6; y++)
+	//Serial.println(AN_OFFSET[y]);
+	//
+	////vTaskDelay(2000);
+	////delay(2000);
+	////digitalWrite(STATUS_LED,HIGH);
+	//
+	//timer=millis();
+	//delay(20);
+	////vTaskDelay(20);
+	//counter=0;
+	//prvHeading=compass.heading();
+	//dprintf("en");
 }
 
 
@@ -893,8 +904,8 @@ int	main(void)
 	TaskHandle_t	t1,	t2,t3;
 	//	Create	tasks
 	xTaskCreate(task1,	"Task	1",	STACK_DEPTH,	NULL,	6,	&t1);
-	xTaskCreate(task2,	"Task	2",	STACK_DEPTH,	NULL,	5,	&t2);
-	xTaskCreate(task3,  "Task	3",	STACK_DEPTH,	NULL,	4,	&t3);
+	//xTaskCreate(task2,	"Task	2",	STACK_DEPTH,	NULL,	5,	&t2);
+	//xTaskCreate(task3,  "Task	3",	STACK_DEPTH,	NULL,	4,	&t3);
 	vTaskStartScheduler();
 	
 }
