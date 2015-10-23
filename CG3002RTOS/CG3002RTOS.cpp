@@ -10,10 +10,10 @@
 #include	<task.h>
 #include	<Arduino.h>
 #include	"NewPing.h"
-//#include	"Wire.h"
-#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-#include "Wire.h"
-#endif
+#include	"Wire.h"
+// #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+// #include "Wire.h"
+// #endif
 #include	"L3G.h"
 #include	"LSM303.h"
 
@@ -238,12 +238,12 @@ LSM303 compass;
 
 void I2C_Init()
 {
-	//Wire.begin();
-	#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
 	Wire.begin();
-	#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-	Fastwire::setup(400, true);
-	#endif
+// 	#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+// 	Wire.begin();
+// 	#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+// 	Fastwire::setup(400, true);
+// 	#endif
 }
 
 void Gyro_Init()
@@ -442,7 +442,7 @@ void calculate()
 	  data[6] = 0;
   }
   int headingVal=(int) ToDeg(MAG_Heading);
-  //dprintf("%d",headingVal);
+  dprintf("%d",headingVal);
   if(headingVal>=255)
   {
 	  temp = headingVal/255;
@@ -834,24 +834,35 @@ void task2(void	*p)
 
 void task3(void	*p)
 {
-	if(Serial1.available()>0){
-		int readyToSend = Serial1.read();
-		if(readyToSend==2){
-			//Serial1.write(0xef);
-			for(int i=0;i<DATA_SIZE;i++){
-				Serial1.write(data[i]);
-				}
-			Serial1.write(0xff);
-			Serial1.flush();
-			}else if(readyToSend==3){
-			analogWrite(5,255);
-			}else if(readyToSend==4){
-			analogWrite(5,0);
-		}
-		
-	}
+	while (1)
+	{
+		dprintf("3");
 
-	vTaskDelay(10);
+		if (isConnected==true)
+		{
+			if(Serial1.available()>0){
+				
+				int readyToSend = Serial1.read();
+				/*dprintf(atoi(readyToSend));*/
+				if(readyToSend==2){
+					//Serial1.write(0xef);
+					/*dprintf("1234");*/
+					for(int i=0;i<DATA_SIZE;i++){
+						Serial1.write(data[i]);
+					}
+					Serial1.write(0xff);
+					Serial1.flush();
+					}else if(readyToSend==3){
+					analogWrite(5,255);
+					}else if(readyToSend==4){
+					analogWrite(5,0);
+				}
+				
+			}
+
+			vTaskDelay(10);
+		}
+	}
 	
 }
 
@@ -868,8 +879,10 @@ bool handShake(){
 	incomingByte += 1;
 	if (incomingByte == 2)
 	{
-		//Serial.write(1);
-		//Serial1.print(incomingByte);
+		//Serial1.write(1);
+		Serial1.print(incomingByte);
+		dprintf("%d",incomingByte);
+		Serial1.flush();
 		return true;
 	}
 	else
@@ -879,16 +892,15 @@ bool handShake(){
 
 void setup()
 {
-	Serial.begin(9600);	
-	 pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
-	 for (uint8_t i = 1; i < SONAR_NUM; i++) // Set the starting time for each sensor.
-	 pingTimer[i] = pingTimer[i - 1] + PING_INTERVAL;
-	 
+	Serial.begin(115200);	
 	Serial1.begin(115200);
-	//
- 	//while(isConnected==false)
- 	//isConnected = handShake();
-	//
+	
+	
+	dprintf("hs\n");
+	// wait for handshake
+ 	while(isConnected==false)
+ 	isConnected = handShake();
+	
 	////pinMode (STATUS_LED,OUTPUT);  // Status LED
 	//
 	I2C_Init();
@@ -941,11 +953,11 @@ int	main(void)
 {
 	init();
 	setup();
-	TaskHandle_t	t1,	t2,t3;
+	TaskHandle_t t1,t2,t3;
 	//	Create	tasks
-	xTaskCreate(task1,	"Task 1",	STACK_DEPTH,	NULL,	5,	&t1);
-	xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	6,	&t2);
-	//xTaskCreate(task3,  "Task 3",	STACK_DEPTH,	NULL,	7,	&t3);
+	xTaskCreate(task1,	"Task 1",	STACK_DEPTH,	NULL,	3,	&t1);
+	xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	2,	&t2);
+	xTaskCreate(task3,  "Task 3",	STACK_DEPTH,	NULL,	1,	&t3);
 	vTaskStartScheduler();
 	
 }
