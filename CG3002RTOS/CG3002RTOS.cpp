@@ -34,7 +34,7 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 #define SONAR_NUM     6 // Number or sensors.
 #define PING_INTERVAL 30
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
-#define DATA_SIZE 10
+#define DATA_SIZE 11
 
 unsigned long pingTimer[SONAR_NUM]; // Holds the times when the next ping should happen for each sensor.
 uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
@@ -436,22 +436,22 @@ void calculate()
   if(step>=255)
   {
 	  temp = step/255;
-	  data[5] = step - temp*255;
-	  data[6] = temp;
+	  data[6] = step - temp*255;
+	  data[7] = temp;
   }else{
-	  data[5] = step;
-	  data[6] = 0;
+	  data[6] = step;
+	  data[7] = 0;
   }
   int headingVal=(int) ToDeg(MAG_Heading);
   dprintf("%d",headingVal);
   if(headingVal>=255)
   {
 	  temp = headingVal/255;
-	  data[7] = headingVal - temp*255;
-	  data[8] = temp;
+	  data[8] = headingVal - temp*255;
+	  data[9] = temp;
   }else{
-	  data[7] = headingVal;
-	  data[8] = 0;
+	  data[8] = headingVal;
+	  data[9] = 0;
   }
   
   //Serial.println(data[5]);
