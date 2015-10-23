@@ -31,7 +31,7 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 
 //SONAR 
 #define MAX_DISTANCE 250 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
-#define SONAR_NUM     5 // Number or sensors.
+#define SONAR_NUM     6 // Number or sensors.
 #define PING_INTERVAL 30
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
 #define DATA_SIZE 10
@@ -48,7 +48,8 @@ NewPing sonar[SONAR_NUM] = {     // Sensor object array.
 	NewPing(24, 25, MAX_DISTANCE),	//UR1  Right Front
 	NewPing(26, 27, MAX_DISTANCE),	//UR2 Left Front
 	NewPing(28, 29, 100),	//UR3 Left Side
-	NewPing(30, 31, MAX_DISTANCE)	//UR4 Center
+	NewPing(30, 31, MAX_DISTANCE),	//UR4 Center(right leg) 
+	NewPing(32, 33, MAX_DISTANCE)	// right leg down 
 };
 unsigned int uS;
 
@@ -765,6 +766,7 @@ void	task1(void	*p)
 		readSonar(2);		
 		readSonar(3);
 		readSonar(4);		
+		readSonar(5); 
 		
 		
 		readIRSensor(); 		
