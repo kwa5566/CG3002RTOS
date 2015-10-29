@@ -35,6 +35,10 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 #define PING_INTERVAL 30
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
 #define DATA_SIZE 11
+#define UP_TH 60
+#define DOWN_TH 100
+#define SIDE_TH 20 
+#define BASE_TH 15 
 
 unsigned long pingTimer[SONAR_NUM]; // Holds the times when the next ping should happen for each sensor.
 uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
@@ -60,7 +64,8 @@ unsigned int ir_distance=0;
 //MOTOR 
 #define motorL 5
 #define motorR 6
-int flagL, flagR=0;
+#define motorD 9 
+int flagL, flagR , flagD ;
 
 //IMU 
 // LSM303 accelerometer: 8 g sensitivity
@@ -736,19 +741,27 @@ void readIRSensor(void){
 	ir_distance=54.06*pow(ir_value,-1.21);
 }
 
-void onVMotor(int i){
-	if (i==0)
-		analogWrite(motorL,255);
-	else if (i==1)
-		analogWrite(motorR,255);
-	else if(i==0 && i==1){
-		 analogWrite(motorL,255);
-		 analogWrite(motorR,255);
+void onVMotor(){
+	
+	if(flagL){ 
+		analogWrite(motorL,255);		
+	} 
+	else {
+		analogWrite(motorL,0);
+	}
+	
+	if ( flagR){
+		analogWrite(motorR,255);		
+	}
+	else{ 
+		analogWrite(motorR,0);
+	} 
+	if (flagD){
+		analogWrite(motorD,255);		
 	}
 	else{
-		analogWrite(motorL,0);
-		analogWrite(motorR,0);
-	}
+		analogWrite(motorD,0);
+	}	
 }
 
 
@@ -773,9 +786,21 @@ void	task1(void	*p)
 		
 		for (uint8_t i = 0; i < SONAR_NUM; i++)  // Loop through all the sensors.						
 			dprintf("%d: %d",i,cm[i]);	
-		dprintf("IR: %d\n", ir_distance);
+		//dprintf("IR: %d\n", ir_distance);
 		
-		//if(ir_distance>=20 && ir_distance<=50)
+		flagD = 0 ; 
+		flagL = 0 ; 
+		flagR = 0 ; 
+		if((cm[0]> 5 && cm[0]< SIDE_TH) || (cm[1]> 10 && cm[1]<UP_TH)){
+			flagR = 1; 
+		}		
+		if((cm[3]> 5 && cm[3]< SIDE_TH) || (cm[2]> 10 && cm[2]<UP_TH)){
+			flagL = 1;
+		}
+		if((cm[4]> 10 && cm[4]< DOWN_TH) || (cm[5]> 10 && cm[5]<DOWN_TH)){
+			flagD = 1;
+		}
+		onVMotor();		//if(ir_distance>=20 && ir_distance<=50)
 			//onVMotor(0);
 		//else if (ir_distance>=50 && ir_distance<=100)
 			//onVMotor(1);
@@ -783,6 +808,9 @@ void	task1(void	*p)
 			//onVMotor(2);	
 		//vTaskDelay(100);	
 		
+		dprintf("flagL: %d",flagL);
+		dprintf("flagR: %d",flagR);
+		dprintf("flagD: %d",flagD);	
 	}
 }
 
@@ -895,59 +923,59 @@ bool handShake(){
 void setup()
 {
 	Serial.begin(115200);	
-	Serial1.begin(115200);
-	
-	
-	dprintf("hs\n");
-	// wait for handshake
- 	while(isConnected==false)
- 	isConnected = handShake();
-	
-	////pinMode (STATUS_LED,OUTPUT);  // Status LED
+	//Serial1.begin(115200);
 	//
-	I2C_Init();
-	//dprintf("be");
-	//Serial.println("Pololu MinIMU-9 + Arduino AHRS");
-
-	//digitalWrite(STATUS_LED,LOW);
-	//vTaskDelay(1500);
-	
-	Accel_Init();
-	Compass_Init();
-	Gyro_Init();
-	
-	//vTaskDelay(20);
-	delay(20);
-	
-	for(int i=0;i<32;i++)    // We take some readings...
-	{
-		Read_Gyro();
-		Read_Accel();
-		for(int y=0; y<6; y++)   // Cumulate values
-		AN_OFFSET[y] += AN[y];
-	    //vTaskDelay(20);
-		delay(20);
-	}
-	
-	for(int y=0; y<6; y++)
-	AN_OFFSET[y] = AN_OFFSET[y]/32;
-	
-	AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
-	
-	Serial.println("Offset:");
-	for(int y=0; y<6; y++)
-	Serial.println(AN_OFFSET[y]);
-	
-	//vTaskDelay(2000);
-	delay(2000);
-	//digitalWrite(STATUS_LED,HIGH);
-	
-	timer=millis();
-	delay(20);
-	//vTaskDelay(20);
-	counter=0;
-	//prvHeading=compass.heading();
-	dprintf("en");
+	//
+	//dprintf("hs\n");
+	//// wait for handshake
+ 	//while(isConnected==false)
+ 	//isConnected = handShake();
+	//
+	//////pinMode (STATUS_LED,OUTPUT);  // Status LED
+	////
+	//I2C_Init();
+	////dprintf("be");
+	////Serial.println("Pololu MinIMU-9 + Arduino AHRS");
+//
+	////digitalWrite(STATUS_LED,LOW);
+	////vTaskDelay(1500);
+	//
+	//Accel_Init();
+	//Compass_Init();
+	//Gyro_Init();
+	//
+	////vTaskDelay(20);
+	//delay(20);
+	//
+	//for(int i=0;i<32;i++)    // We take some readings...
+	//{
+		//Read_Gyro();
+		//Read_Accel();
+		//for(int y=0; y<6; y++)   // Cumulate values
+		//AN_OFFSET[y] += AN[y];
+	    ////vTaskDelay(20);
+		//delay(20);
+	//}
+	//
+	//for(int y=0; y<6; y++)
+	//AN_OFFSET[y] = AN_OFFSET[y]/32;
+	//
+	//AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
+	//
+	//Serial.println("Offset:");
+	//for(int y=0; y<6; y++)
+	//Serial.println(AN_OFFSET[y]);
+	//
+	////vTaskDelay(2000);
+	//delay(2000);
+	////digitalWrite(STATUS_LED,HIGH);
+	//
+	//timer=millis();
+	//delay(20);
+	////vTaskDelay(20);
+	//counter=0;
+	////prvHeading=compass.heading();
+	//dprintf("en");
 }
 
 
@@ -958,8 +986,8 @@ int	main(void)
 	TaskHandle_t t1,t2,t3;
 	//	Create	tasks
 	xTaskCreate(task1,	"Task 1",	STACK_DEPTH,	NULL,	3,	&t1);
-	xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	2,	&t2);
-	xTaskCreate(task3,  "Task 3",	STACK_DEPTH,	NULL,	1,	&t3);
+	//xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	2,	&t2);
+	//xTaskCreate(task3,  "Task 3",	STACK_DEPTH,	NULL,	1,	&t3);
 	vTaskStartScheduler();
 	
 }
