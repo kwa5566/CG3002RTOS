@@ -932,59 +932,59 @@ bool handShake(){
 void setup()
 {
 	Serial.begin(115200);	
-	//Serial1.begin(115200);
+	Serial1.begin(115200);
+	
+	
+	dprintf("hs\n");
+	// wait for handshake
+ 	while(isConnected==false)
+ 	isConnected = handShake();
+	
+	////pinMode (STATUS_LED,OUTPUT);  // Status LED
 	//
-	//
-	//dprintf("hs\n");
-	//// wait for handshake
- 	//while(isConnected==false)
- 	//isConnected = handShake();
-	//
-	//////pinMode (STATUS_LED,OUTPUT);  // Status LED
-	////
-	//I2C_Init();
-	////dprintf("be");
-	////Serial.println("Pololu MinIMU-9 + Arduino AHRS");
-//
-	////digitalWrite(STATUS_LED,LOW);
-	////vTaskDelay(1500);
-	//
-	//Accel_Init();
-	//Compass_Init();
-	//Gyro_Init();
-	//
-	////vTaskDelay(20);
-	//delay(20);
-	//
-	//for(int i=0;i<32;i++)    // We take some readings...
-	//{
-		//Read_Gyro();
-		//Read_Accel();
-		//for(int y=0; y<6; y++)   // Cumulate values
-		//AN_OFFSET[y] += AN[y];
-	    ////vTaskDelay(20);
-		//delay(20);
-	//}
-	//
-	//for(int y=0; y<6; y++)
-	//AN_OFFSET[y] = AN_OFFSET[y]/32;
-	//
-	//AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
-	//
-	//Serial.println("Offset:");
-	//for(int y=0; y<6; y++)
-	//Serial.println(AN_OFFSET[y]);
-	//
-	////vTaskDelay(2000);
-	//delay(2000);
-	////digitalWrite(STATUS_LED,HIGH);
-	//
-	//timer=millis();
-	//delay(20);
-	////vTaskDelay(20);
-	//counter=0;
-	////prvHeading=compass.heading();
-	//dprintf("en");
+	I2C_Init();
+	//dprintf("be");
+	//Serial.println("Pololu MinIMU-9 + Arduino AHRS");
+
+	//digitalWrite(STATUS_LED,LOW);
+	//vTaskDelay(1500);
+	
+	Accel_Init();
+	Compass_Init();
+	Gyro_Init();
+	
+	//vTaskDelay(20);
+	delay(20);
+	
+	for(int i=0;i<32;i++)    // We take some readings...
+	{
+		Read_Gyro();
+		Read_Accel();
+		for(int y=0; y<6; y++)   // Cumulate values
+		AN_OFFSET[y] += AN[y];
+	    //vTaskDelay(20);
+		delay(20);
+	}
+	
+	for(int y=0; y<6; y++)
+	AN_OFFSET[y] = AN_OFFSET[y]/32;
+	
+	AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
+	
+	Serial.println("Offset:");
+	for(int y=0; y<6; y++)
+	Serial.println(AN_OFFSET[y]);
+	
+	//vTaskDelay(2000);
+	delay(2000);
+	//digitalWrite(STATUS_LED,HIGH);
+	
+	timer=millis();
+	delay(20);
+	//vTaskDelay(20);
+	counter=0;
+	//prvHeading=compass.heading();
+	dprintf("en");
 }
 
 
@@ -995,8 +995,8 @@ int	main(void)
 	TaskHandle_t t1,t2,t3;
 	//	Create	tasks
 	xTaskCreate(task1,	"Task 1",	STACK_DEPTH,	NULL,	3,	&t1);
-	//xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	2,	&t2);
-	//xTaskCreate(task3,  "Task 3",	STACK_DEPTH,	NULL,	1,	&t3);
+	xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	2,	&t2);
+	xTaskCreate(task3,  "Task 3",	STACK_DEPTH,	NULL,	1,	&t3);
 	vTaskStartScheduler();
 	
 }
