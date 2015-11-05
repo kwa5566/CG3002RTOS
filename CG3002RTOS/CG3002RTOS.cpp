@@ -35,6 +35,10 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 #define PING_INTERVAL 30
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
 #define DATA_SIZE 4
+#define UP_TH 70
+#define DOWN_TH 100
+#define SIDE_TH 40 
+#define BASE_TH 10 
 
 unsigned long pingTimer[SONAR_NUM]; // Holds the times when the next ping should happen for each sensor.
 uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
@@ -60,7 +64,8 @@ unsigned int ir_distance=0;
 //MOTOR 
 #define motorL 5
 #define motorR 6
-int flagL, flagR=0;
+#define motorD 9 
+int flagL, flagR , flagD ;
 
 //IMU 
 // LSM303 accelerometer: 8 g sensitivity
@@ -724,7 +729,7 @@ int freeRam () {
 
 void readSonar(uint8_t sensor){	
 	
-	vTaskDelay(PING_INTERVAL);	
+	//vTaskDelay(PING_INTERVAL);	
 	uS = sonar[sensor].ping_median(3); 	
 	cm[sensor] = uS/US_ROUNDTRIP_CM; 
 	//data[sensor]=cm[sensor];
@@ -737,19 +742,30 @@ void readIRSensor(void){
 	ir_distance=54.06*pow(ir_value,-1.21);
 }
 
-void onVMotor(int i){
-	if (i==0)
-		analogWrite(motorL,255);
-	else if (i==1)
+void onVMotor(){
+	
+	if ( flagR){
 		analogWrite(motorR,255);
-	else if(i==0 && i==1){
-		 analogWrite(motorL,255);
-		 analogWrite(motorR,255);
 	}
 	else{
-		analogWrite(motorL,0);
 		analogWrite(motorR,0);
 	}
+	
+	
+	if(flagL){ 
+		analogWrite(motorL,225);		
+	} 
+	else {
+		analogWrite(motorL,0);
+	}
+	
+	
+	if (flagD){
+		analogWrite(motorD,255);		
+	}
+	else{
+		analogWrite(motorD,0);
+	}	
 }
 
 
@@ -762,11 +778,17 @@ void	task1(void	*p)
 		//dprintf("%d\n",millis());	
 		
 		//readSonar(); 
-		readSonar(1);		
+		vTaskDelay(20);			
+		readSonar(1);	
+		vTaskDelay(5);
 		readSonar(0);
-		readSonar(2);		
+		vTaskDelay(5);
+		readSonar(2);
+		vTaskDelay(5);		
 		readSonar(3);
-		readSonar(4);		
+		vTaskDelay(5);		
+		readSonar(4);	
+		vTaskDelay(30);			
 		readSonar(5); 
 		
 		
@@ -774,9 +796,21 @@ void	task1(void	*p)
 		
 		for (uint8_t i = 0; i < SONAR_NUM; i++)  // Loop through all the sensors.						
 			dprintf("%d: %d",i,cm[i]);	
-		dprintf("IR: %d\n", ir_distance);
+		//dprintf("IR: %d\n", ir_distance);
 		
-		//if(ir_distance>=20 && ir_distance<=50)
+		flagD = 0 ; 
+		flagL = 0 ; 
+		flagR = 0 ; 
+		if((cm[0]> BASE_TH && cm[0]< SIDE_TH) || (cm[1]> BASE_TH && cm[1]<UP_TH)){
+			flagR = 1; 
+		}		
+		if((cm[3]> BASE_TH && cm[3]< SIDE_TH) || (cm[2]> BASE_TH && cm[2]<UP_TH)){
+			flagL = 1;
+		}
+		if((cm[4]> BASE_TH && cm[4]< DOWN_TH) || (cm[5]> BASE_TH && cm[5]<DOWN_TH)){
+			flagD = 1;
+		}
+		onVMotor();		//if(ir_distance>=20 && ir_distance<=50)
 			//onVMotor(0);
 		//else if (ir_distance>=50 && ir_distance<=100)
 			//onVMotor(1);
@@ -784,6 +818,9 @@ void	task1(void	*p)
 			//onVMotor(2);	
 		//vTaskDelay(100);	
 		
+		dprintf("flagL: %d",flagL);
+		dprintf("flagR: %d",flagR);
+		dprintf("flagD: %d",flagD);	
 	}
 }
 
