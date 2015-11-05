@@ -34,7 +34,7 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 #define SONAR_NUM     6 // Number or sensors.
 #define PING_INTERVAL 30
 unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
-#define DATA_SIZE 11
+#define DATA_SIZE 4
 
 unsigned long pingTimer[SONAR_NUM]; // Holds the times when the next ping should happen for each sensor.
 uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
@@ -436,22 +436,23 @@ void calculate()
   if(step>=255)
   {
 	  temp = step/255;
-	  data[6] = step - temp*255;
-	  data[7] = temp;
+	  data[0] = step - temp*255;
+	  data[1] = temp;
   }else{
-	  data[6] = step;
-	  data[7] = 0;
+	  data[0] = step;
+	  data[1] = 0;
   }
-  int headingVal=(int) ToDeg(MAG_Heading);
-  dprintf("%d",headingVal);
+ // int headingVal=(int) ToDeg(MAG_Heading);
+  int headingVal = (int) compass.heading();
+ // dprintf("%d",cmp);
   if(headingVal>=255)
   {
 	  temp = headingVal/255;
-	  data[8] = headingVal - temp*255;
-	  data[9] = temp;
+	  data[2] = headingVal - temp*255;
+	  data[3] = temp;
   }else{
-	  data[8] = headingVal;
-	  data[9] = 0;
+	  data[2] = headingVal;
+	  data[3] = 0;
   }
   
   //Serial.println(data[5]);
@@ -726,7 +727,7 @@ void readSonar(uint8_t sensor){
 	vTaskDelay(PING_INTERVAL);	
 	uS = sonar[sensor].ping_median(3); 	
 	cm[sensor] = uS/US_ROUNDTRIP_CM; 
-	data[sensor]=cm[sensor];
+	//data[sensor]=cm[sensor];
 	
 		//dprintf("%d\n",cm[sensor]);	
 }
@@ -838,25 +839,33 @@ void task3(void	*p)
 {
 	while (1)
 	{
-		dprintf("3");
+		//dprintf("3");
 
 		if (isConnected==true)
 		{
 			if(Serial1.available()>0){
 				
-				int readyToSend = Serial1.read();
+				int receivedByte = Serial1.read();
 				/*dprintf(atoi(readyToSend));*/
-				if(readyToSend==2){
-					//Serial1.write(0xef);
-					/*dprintf("1234");*/
+				if(receivedByte==2){
 					for(int i=0;i<DATA_SIZE;i++){
 						Serial1.write(data[i]);
 					}
 					Serial1.write(0xff);
 					Serial1.flush();
-					}else if(readyToSend==3){
+				}
+				else if(receivedByte==3){
+					analogWrite(6,255);
+				}
+				else if(receivedByte==4){
 					analogWrite(5,255);
-					}else if(readyToSend==4){
+				}
+				else if (receivedByte == 5 )
+				{
+					analogWrite(6,0);
+				}
+				else if (receivedByte == 6)
+				{
 					analogWrite(5,0);
 				}
 				
@@ -869,6 +878,7 @@ void task3(void	*p)
 }
 
 #define	STACK_DEPTH	128
+#define STACK_DEPTH2 300
 void	vApplicationIdleHook()
 {
 	//	Do	nothing.
@@ -958,7 +968,7 @@ int	main(void)
 	TaskHandle_t t1,t2,t3;
 	//	Create	tasks
 	xTaskCreate(task1,	"Task 1",	STACK_DEPTH,	NULL,	3,	&t1);
-	xTaskCreate(task2,	"Task 2",	STACK_DEPTH,	NULL,	2,	&t2);
+	xTaskCreate(task2,	"Task 2",	STACK_DEPTH2,	NULL,	2,	&t2);
 	xTaskCreate(task3,  "Task 3",	STACK_DEPTH,	NULL,	1,	&t3);
 	vTaskStartScheduler();
 	
