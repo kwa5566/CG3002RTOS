@@ -19,7 +19,7 @@
 
 
 int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
-
+LSM303::vector<int16_t> c_min = {32767, 32767, 32767}, c_max = {-32768, -32768, -32768};
 
 //=======================================================================================================================================//
 /*
@@ -331,6 +331,27 @@ void dprintf(const char *fmt,...)
 	debugPrint(debugBuffer);
 }
 
+//Calibrate Compass
+void calibrateCompass(){
+	unsigned long start = millis();
+	dprintf("Calibrating");
+	while(millis()-start<=5000){
+		compass.read();
+		
+		c_min.x = min(c_min.x, compass.m.x);
+		c_min.y = min(c_min.y, compass.m.y);
+		c_min.z = min(c_min.z, compass.m.z);
+
+		c_max.x = max(c_max.x, compass.m.x);
+		c_max.y = max(c_max.y, compass.m.y);
+		c_max.z = max(c_max.z, compass.m.z);
+	}
+	compass.m_min = (LSM303::vector<int16_t>){c_min.x, c_min.y, c_min.z};
+	compass.m_max = (LSM303::vector<int16_t>){c_max.x, c_max.y, c_max.z};
+	compass.heading((LSM303::vector<int>){0, 0, 1});
+	dprintf("Calibrated");
+}
+
 
 //========================OUTPUT===========================// 
 #define THRESHOLD 7
@@ -357,7 +378,7 @@ void calculate()
   //
   
   curDeg= ToDeg(pitch);
-  dprintf("%d",curDeg);
+  //dprintf("%d",curDeg);
   
   if(curDeg>0) // if moving forward
   {
@@ -449,7 +470,7 @@ void calculate()
   }
  // int headingVal=(int) ToDeg(MAG_Heading);
   int headingVal = (int) compass.heading();
- // dprintf("%d",cmp);
+  dprintf("%d",headingVal);
   if(headingVal>=255)
   {
 	  temp = headingVal/255;
@@ -696,9 +717,9 @@ void Compass_Heading()
 	sin_pitch = sin(pitch);
 	
 	// adjust for LSM303 compass axis offsets/sensitivity differences by scaling to +/-0.5 range
-	c_magnetom_x = (float)(magnetom_x - SENSOR_SIGN[6]*M_X_MIN) / (M_X_MAX - M_X_MIN) - SENSOR_SIGN[6]*0.5;
-	c_magnetom_y = (float)(magnetom_y - SENSOR_SIGN[7]*M_Y_MIN) / (M_Y_MAX - M_Y_MIN) - SENSOR_SIGN[7]*0.5;
-	c_magnetom_z = (float)(magnetom_z - SENSOR_SIGN[8]*M_Z_MIN) / (M_Z_MAX - M_Z_MIN) - SENSOR_SIGN[8]*0.5;
+	c_magnetom_x = (float)(magnetom_x - SENSOR_SIGN[6]*c_min.x) / (c_max.x - c_min.x) - SENSOR_SIGN[6]*0.5;
+	c_magnetom_y = (float)(magnetom_y - SENSOR_SIGN[7]*c_min.y) / (c_max.y - c_min.y) - SENSOR_SIGN[7]*0.5;
+	c_magnetom_z = (float)(magnetom_z - SENSOR_SIGN[8]*c_min.z) / (c_max.z - c_min.z) - SENSOR_SIGN[8]*0.5;
 	
 	//// Tilt compensated Magnetic filed X:
 	//MAG_X = c_magnetom_x*cos_pitch+c_magnetom_y*sin_roll*sin_pitch+c_magnetom_z*cos_roll*sin_pitch;
@@ -945,10 +966,7 @@ void setup()
 	Serial1.begin(115200);
 	
 	
-	dprintf("hs\n");
-	// wait for handshake
- 	while(isConnected==false)
- 	isConnected = handShake();
+
 	
 	////pinMode (STATUS_LED,OUTPUT);  // Status LED
 	//
@@ -994,6 +1012,16 @@ void setup()
 	//vTaskDelay(20);
 	counter=0;
 	//prvHeading=compass.heading();
+	
+	dprintf("hs\n");
+	// wait for handshake
+	while(isConnected==false)
+	isConnected = handShake();
+	
+	delay(1000);
+	
+	calibrateCompass();
+	
 	dprintf("en");
 }
 
