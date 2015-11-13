@@ -335,7 +335,7 @@ void dprintf(const char *fmt,...)
 void calibrateCompass(){
 	unsigned long start = millis();
 	dprintf("Calibrating");
-	while(millis()-start<=5000){
+	while(millis()-start<=8000){
 		compass.read();
 		
 		c_min.x = min(c_min.x, compass.m.x);
@@ -368,7 +368,14 @@ bool aDone=false,bDone=false,rotating=false;
 
 void calculate()
 {
-  //float curHeading = ToDeg(MAG_Heading);
+	
+	if(abs(gyro_y) > 200){
+		dprintf("rotating!");
+		vTaskDelay(100);
+		return;
+	}
+		
+  //float curHeading = compass.heading();
   //rotating = abs(curHeading-prvHeading)>9;
   //prvHeading = curHeading;
   //if(rotating){
@@ -378,7 +385,8 @@ void calculate()
   //
   
   curDeg= ToDeg(pitch);
-  //dprintf("%d",curDeg);
+  dprintf("%d",curDeg);
+ // dprintf("%d : %d : %d : %2f",curDeg,ToDeg(roll),ToDeg(yaw),curHeading);
   
   if(curDeg>0) // if moving forward
   {
@@ -418,7 +426,7 @@ void calculate()
 		  //Serial.println(beta);
 		  //#endif
 		  
-		  } else if (abs(curDeg) < abs(prvDeg) && beta> 3 && beta<=10 && bDone==false){
+		  } else if (abs(curDeg) < abs(prvDeg) && beta>= 3 && beta<=10 && bDone==false){
 		  beta = beta*3.0*PIE/180.0;
 		  distance += HEIGHT*tan(alpha);
 		  step+=1;
@@ -886,7 +894,7 @@ void task2(void	*p)
 			//dprintf("%d\n",step);
 			//dprintf("%d\n",ToDeg(MAG_Heading));
 			//Serial.println(millis());
-			vTaskDelay(10);
+			vTaskDelay(20);
 			//printdata();
 			//}
 	
@@ -1017,8 +1025,7 @@ void setup()
 	// wait for handshake
 	while(isConnected==false)
 	isConnected = handShake();
-	
-	delay(1000);
+	//delay(1000);
 	
 	calibrateCompass();
 	
