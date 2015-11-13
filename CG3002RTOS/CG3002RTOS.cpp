@@ -16,7 +16,7 @@
 // #endif
 #include	"L3G.h"
 #include	"LSM303.h"
-
+#define DEBUG 1
 
 int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1};
 LSM303::vector<int16_t> c_min = {32767, 32767, 32767}, c_max = {-32768, -32768, -32768};
@@ -335,7 +335,8 @@ void dprintf(const char *fmt,...)
 void calibrateCompass(){
 	unsigned long start = millis();
 	dprintf("Calibrating");
-	while(millis()-start<=8000){
+	analogWrite(motorL,255);
+	while(millis()-start<=7000){
 		compass.read();
 		
 		c_min.x = min(c_min.x, compass.m.x);
@@ -349,6 +350,7 @@ void calibrateCompass(){
 	compass.m_min = (LSM303::vector<int16_t>){c_min.x, c_min.y, c_min.z};
 	compass.m_max = (LSM303::vector<int16_t>){c_max.x, c_max.y, c_max.z};
 	compass.heading((LSM303::vector<int>){0, 0, 1});
+	analogWrite(motorL,0);
 	dprintf("Calibrated");
 }
 
@@ -362,6 +364,7 @@ void calibrateCompass(){
 #define PRINT_DIST 0
 #define PRINT_STEPS 1
 
+
 int curDeg=0,prvDeg=0,step=0;
 float alpha=0,beta=0,distance=0,prvHeading=0;
 bool aDone=false,bDone=false,rotating=false;
@@ -369,9 +372,9 @@ bool aDone=false,bDone=false,rotating=false;
 void calculate()
 {
 	
-	if(abs(gyro_y) > 200){
+	if(abs(gyro_y) > 300){
 		dprintf("rotating!");
-		vTaskDelay(100);
+		vTaskDelay(80);
 		return;
 	}
 		
@@ -426,7 +429,7 @@ void calculate()
 		  //Serial.println(beta);
 		  //#endif
 		  
-		  } else if (abs(curDeg) < abs(prvDeg) && beta>= 3 && beta<=10 && bDone==false){
+		  } else if (abs(curDeg) < abs(prvDeg) && beta> 2 && beta<=10 && bDone==false){
 		  beta = beta*3.0*PIE/180.0;
 		  distance += HEIGHT*tan(alpha);
 		  step+=1;
@@ -914,37 +917,25 @@ void task3(void	*p)
 				int receivedByte = Serial1.read();
 				/*dprintf(atoi(readyToSend));*/
 				if(receivedByte==2){
-					for(int i=0;i<DATA_SIZE;i++){
+					Serial1.write(step);
+					for(int i=1;i<DATA_SIZE;i++){
 						Serial1.write(data[i]);
 					}
 					Serial1.write(0xff);
 					Serial1.flush();
 				}
-				else if(receivedByte==3){
-					analogWrite(6,255);
-				}
-				else if(receivedByte==4){
-					analogWrite(5,255);
-				}
-				else if (receivedByte == 5 )
-				{
-					analogWrite(6,0);
-				}
-				else if (receivedByte == 6)
-				{
-					analogWrite(5,0);
-				}
 				
 			}
 
-			vTaskDelay(10);
+			vTaskDelay(20);
 		}
 	}
 	
 }
 
-#define	STACK_DEPTH	128
+#define	STACK_DEPTH	200
 #define STACK_DEPTH2 300
+#define STACK_DEPTH3 50
 void	vApplicationIdleHook()
 {
 	//	Do	nothing.
@@ -952,14 +943,13 @@ void	vApplicationIdleHook()
 
 bool handShake(){
 	while(Serial1.available()<=0);
-	
 	int incomingByte = Serial1.read();
 	incomingByte += 1;
 	if (incomingByte == 2)
 	{
 		//Serial1.write(1);
 		Serial1.print(incomingByte);
-		dprintf("%d",incomingByte);
+		//dprintf("%d",incomingByte);
 		Serial1.flush();
 		return true;
 	}
@@ -968,14 +958,19 @@ bool handShake(){
 }
 
 
+
+
+
 void setup()
 {
-	Serial.begin(115200);	
+	Serial.begin(57600);	
 	Serial1.begin(115200);
+	Serial1.flush();
 	
-	
+	while(isConnected==false)
+	isConnected = handShake();
+			
 
-	
 	////pinMode (STATUS_LED,OUTPUT);  // Status LED
 	//
 	I2C_Init();
@@ -1007,9 +1002,9 @@ void setup()
 	
 	AN_OFFSET[5]-=GRAVITY*SENSOR_SIGN[5];
 	
-	Serial.println("Offset:");
+	//Serial.println("Offset:");
 	for(int y=0; y<6; y++)
-	Serial.println(AN_OFFSET[y]);
+	//Serial.println(AN_OFFSET[y]);
 	
 	//vTaskDelay(2000);
 	delay(2000);
@@ -1021,15 +1016,15 @@ void setup()
 	counter=0;
 	//prvHeading=compass.heading();
 	
-	dprintf("hs\n");
+	//dprintf("hs\n");
 	// wait for handshake
-	while(isConnected==false)
-	isConnected = handShake();
-	//delay(1000);
+
+
+	
 	
 	calibrateCompass();
 	
-	dprintf("en");
+	//dprintf("en");
 }
 
 
